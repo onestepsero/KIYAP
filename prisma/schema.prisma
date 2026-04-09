@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  PARENT
+  TEACHER
+  ADMIN
+}
+
+enum ActivityStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+  COMPLETED
+}
+
+enum ApplicationStatus {
+  PENDING
+  CONFIRMED
+  WAITLIST
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  SETTLED
+  EXPIRED
+  REFUNDED
+}
+
+enum NotificationChannel {
+  IN_APP
+  SMS
+  EMAIL
+  PUSH
+}
+
+enum NotificationType {
+  ACTIVITY_APPLIED
+  ACTIVITY_CANCELLED
+  ACTIVITY_CONFIRMED
+  ACTIVITY_REMINDER
+  PAYMENT_REQUEST
+  PAYMENT_CONFIRMED
+  PAYMENT_OVERDUE
+  ANNOUNCEMENT
+  SYSTEM
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  phone       String?
+  role        Role
+  isApproved  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student       Student?
+  teacher       Teacher?
+  parent        Parent?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([role])
+  @@index([email])
+}
+
+model School {
+  id        String   @id @default(cuid())
+  name      String
+  region    String   @default("인천")
+  address   String?
+  createdAt DateTime @default(now())
+
+  students  Student[]
+  teachers  Teacher[]
+}
+
+model Student {
+  id       String  @id @default(cuid())
+  userId   String  @unique
+  schoolId String
+  grade    Int
+  class    Int
+  parentId String?
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school       School        @relation(fields: [schoolId], references: [id])
+  parent       Parent?       @relation(fields: [parentId], references: [id])
+  applications Application[]
+}
+
+model Parent {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  children Student[]
+}
+
+model Teacher {
+  id       String @id @default(cuid())
+  userId   String @unique
+  schoolId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id])
+}
+
+model Activity {
+  id           String         @id @default(cuid())
+  title        String
+  description  String         @db.Text
+  category     String
+  capacity     Int
+  waitlistLimit Int           @default(10)
+  startDate    DateTime
+  endDate      DateTime
+  location     String
+  fee          Int            @default(0)
+  targetGrades String[]
+  imageUrl     String?
+  status       ActivityStatus @default(DRAFT)
+  requireParentConsent Boolean @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  applications Application[]
+
+  @@index([status])
+  @@index([category])
+  @@index([startDate])
+}
+
+model Application {
+  id        String            @id @default(cuid())
+  studentId String
+  activityId String
+  status    ApplicationStatus @default(PENDING)
+  appliedAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  parentConsent Boolean       @default(false)
+  cancelledAt DateTime?
+  cancelReason String?
+
+  student  Student  @relation(fields: [studentId], references: [id])
+  activity Activity @relation(fields: [activityId], references: [id])
+  payment  Payment?
+
+  @@unique([studentId, activityId])
+  @@index([status])
+  @@index([studentId])
+  @@index([activityId])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  applicationId    String        @unique
+  amount           Int
+  method           String        @default("VIRTUAL_ACCOUNT")
+  virtualAccountNo String        @unique
+  bankName         String        @default("IBK기업은행")
+  accountHolder    String        @default("한국청소년인천연맹")
+  dueDate          DateTime
+  paidAt           DateTime?
+  settledAt        DateTime?
+  status           PaymentStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id])
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  message   String              @db.Text
+  isRead    Boolean             @default(false)
+  sentAt    DateTime            @default(now())
+  readAt    DateTime?
+  metadata  Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String
+  resource  String
+  resourceId String?
+  before    Json?
+  after     Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+}
