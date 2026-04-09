@@ -24,11 +24,9 @@ primary_region = "nrt"   # Tokyo (한국과 가장 가까운 리전)
   size   = "shared-cpu-1x"
   memory = "512mb"
 
-[checks]
-  [checks.health]
-    grace_period = "10s"
-    interval     = "30s"
-    method       = "GET"
-    path         = "/api/auth/me"
-    protocol     = "http"
-    timeout      = "5s"
+[[http_service.checks]]
+  grace_period = "10s"
+  interval     = "30s"
+  method       = "GET"
+  path         = "/login"
+  timeout      = "5s"
