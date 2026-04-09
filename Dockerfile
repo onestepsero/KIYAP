@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:20-alpine AS base
 
 # ── 1. 의존성 설치 ──────────────────────────────────────
@@ -6,7 +7,8 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline
 
 # ── 2. 빌드 ─────────────────────────────────────────────
 FROM base AS builder
@@ -17,7 +19,8 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # ── 3. 프로덕션 이미지 ──────────────────────────────────
 FROM base AS runner
