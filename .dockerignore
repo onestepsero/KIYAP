@@ -10,6 +10,6 @@ README.md
 docker-compose.yml
 Dockerfile
 .dockerignore
-prisma/migrations
+prisma/seed.ts
 coverage
 .DS_Store
