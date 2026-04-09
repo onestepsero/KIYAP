@@ -4,8 +4,6 @@ primary_region = "nrt"   # Tokyo (한국과 가장 가까운 리전)
 [build]
   dockerfile = "Dockerfile"
 
-[deploy]
-  release_command = "npx prisma migrate deploy"
 
 [env]
   PORT     = "3000"
